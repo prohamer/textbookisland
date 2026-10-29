@@ -18,7 +18,7 @@ QuizWorld.defineCurriculum({
       chapters: [
         { id: '7a-1', no: '1', title: '生命的特性', icon: '🔬', color: '#e07a3f', data: 'data/7a-1.js',
           sections: ['1·1 生命現象', '1·2 細胞', '1·3 細胞所需的物質', '1·4 從細胞到個體'] },
-        { id: '7a-x', no: '跨科', title: '世界的各種大小樣貌', icon: '📏', color: '#8a7bc4', data: null,
+        { id: '7a-x', no: '跨科', title: '世界的各種大小樣貌', icon: '📏', color: '#8a7bc4', data: 'data/7a-x.js',
           sections: ['第1節 巨觀尺度與微觀尺度', '第2節 尺度的表示與比較'] },
         { id: '7a-2', no: '2', title: '養分', icon: '🌾', color: '#5f9e4a', data: 'data/7a-2.js',
           sections: ['2·1 食物中的養分', '2·2 酵素', '2·3 植物如何獲得養分', '2·4 動物如何獲得養分'] },
