@@ -80,6 +80,7 @@ targets.forEach((ch) => {
         if (items.length < 4 || items.length > 10) warn(`${P}：${items.length} 張卡片（建議 5–10 張）`);
         items.forEach((it) => {
           if (!it.text) err(`${P}：有一張卡片沒有 text`);
+          else if ([...it.text].length > 16) warn(`${P}：卡片「${it.text}」有 ${[...it.text].length} 字，iPad 上會擠成 3 行以上，建議 16 字以內或拆成兩張`);
           if (!zIds.includes(it.zone)) err(`${P}：卡片「${it.text}」的 zone「${it.zone}」不存在，這關永遠無法答對`);
         });
         zones.forEach((z) => { if (!items.some((it) => it.zone === z.id)) err(`${P}：分類區「${z.title}」沒有任何正確卡片，請刪除或補卡片`); });
@@ -91,6 +92,7 @@ targets.forEach((ch) => {
         if (items.length > 8) warn(`${P}：${items.length} 個步驟，建議最多 8 個`);
         const t = items.map((i) => i.text);
         if (t.some((x) => !x)) err(`${P}：有步驟沒有 text`);
+        t.forEach((x) => { if (x && [...x].length > 28) warn(`${P}：步驟「${x}」有 ${[...x].length} 字，建議 28 字以內`); });
         t.filter((x, i) => t.indexOf(x) !== i).forEach((x) => err(`${P}：步驟文字重複「${x}」，學生無法分辨`));
       } else if (L.type === 'formula') {
         const right = L.right || [];

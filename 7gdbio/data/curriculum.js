@@ -24,7 +24,7 @@ QuizWorld.defineCurriculum({
           sections: ['2·1 食物中的養分', '2·2 酵素', '2·3 植物如何獲得養分', '2·4 動物如何獲得養分'] },
         { id: '7a-3', no: '3', title: '生物的運輸與防禦', icon: '🫀', color: '#d1495b', data: 'data/7a-3.js',
           sections: ['3·1 植物的運輸構造', '3·2 植物體內物質的運輸', '3·3 人體內物質的運輸', '3·4 人體的防禦作用'] },
-        { id: '7a-4', no: '4', title: '生物的協調作用', icon: '🧠', color: '#3a86b4', data: null,
+        { id: '7a-4', no: '4', title: '生物的協調作用', icon: '🧠', color: '#3a86b4', data: 'data/7a-4.js',
           sections: ['4·1 神經系統', '4·2 內分泌系統', '4·3 生物的感應'] },
         { id: '7a-5', no: '5', title: '生物的恆定性', icon: '⚖️', color: '#2f9c95', data: null,
           sections: ['5·1 恆定性與體溫的恆定', '5·2 呼吸與氣體的恆定', '5·3 血糖的恆定', '5·4 排泄作用與水分的恆定'] }
