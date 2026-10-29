@@ -329,3 +329,5 @@ body.qw-dragging { overflow: hidden; touch-action: none; }
 .player-chip svg { width: 18px; height: 18px; flex: none; }
 .field input, .field textarea { min-width: 0; width: 100%; }
 .field { min-width: 0; }
+.card { -webkit-user-drag: none; }
+.pool, .zone, .slot { -webkit-user-select: none; user-select: none; }

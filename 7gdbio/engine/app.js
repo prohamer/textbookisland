@@ -126,22 +126,20 @@
   }
 
   // ---------------------------------------------------------
-  // 拖拉控制（滑鼠＋觸控共用 Pointer Events）
-  // iPad 重點：卡片 touch-action:none、拖曳中鎖住頁面捲動、
-  // 意外中斷（pointercancel、切換 App）時完整清理。
+  // 拖拉控制
+  // - 觸控（iPad、手機）：用 Touch Events，在 touchstart 立刻 preventDefault
+  //   （passive:false），瀏覽器就不會把手勢當成捲動而中斷拖曳（沿用 v4.1 作法）。
+  // - 滑鼠、觸控筆：用 Pointer Events。
+  // - 沒移動就放開 = 點一下（選取卡片）。
+  // - 意外中斷（touchcancel、切換 App、視窗失焦）時完整清理。
+  // 目前畫面上的關卡透過 Drag.bind() 提供 onDrop / onTap。
   // ---------------------------------------------------------
   const Drag = {
     st: null,
-    justDragged: false,
-    start(e, id, onDrop) {
-      if (this.st) return;
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      const el = e.currentTarget;
-      this.st = { id, el, onDrop, pid: e.pointerId, x0: e.clientX, y0: e.clientY, moved: false, ghost: null, over: null, offX: 0, offY: 0 };
-      try { el.setPointerCapture(e.pointerId); } catch (err) { /* 部分瀏覽器不支援 */ }
-      window.addEventListener('pointermove', Drag.onMove, { passive: false });
-      window.addEventListener('pointerup', Drag.onUp);
-      window.addEventListener('pointercancel', Drag.onCancel);
+    h: null,                       // { onDrop(id, key), onTap(id), enabled }
+    bind(h) { this.h = h; },
+    _init(el, id, x, y, mode, key) {
+      this.st = { id, el, mode, key, x0: x, y0: y, moved: false, ghost: null, over: null, offX: 0, offY: 0 };
     },
     begin() {
       const s = this.st;
@@ -151,6 +149,7 @@
       g.classList.remove('is-selected', 'is-ok', 'is-bad');
       g.classList.add('ghost');
       g.style.width = r.width + 'px'; g.style.height = r.height + 'px';
+      g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
       g.removeAttribute('id');
       document.body.appendChild(g);
       s.ghost = g;
@@ -162,57 +161,111 @@
       const hit = document.elementFromPoint(x, y);
       return hit ? hit.closest('[data-drop]') : null;
     },
-    onMove(e) {
-      const s = Drag.st;
-      if (!s || e.pointerId !== s.pid) return;
+    moveTo(x, y) {
+      const s = this.st;
+      if (!s) return;
       if (!s.moved) {
-        if (Math.hypot(e.clientX - s.x0, e.clientY - s.y0) < 7) return;
-        Drag.begin();
+        if (Math.hypot(x - s.x0, y - s.y0) < 8) return;
+        this.begin();
       }
-      e.preventDefault();
-      s.ghost.style.left = (e.clientX - s.offX) + 'px';
-      s.ghost.style.top = (e.clientY - s.offY) + 'px';
-      // 接近上下邊緣時自動捲動（手機直向時分類區在下方）
-      const edge = 90;
-      if (e.clientY < edge) window.scrollBy(0, -16);
-      else if (e.clientY > window.innerHeight - edge - 60) window.scrollBy(0, 16);
-      const t = Drag.target(e.clientX, e.clientY);
+      s.ghost.style.left = (x - s.offX) + 'px';
+      s.ghost.style.top = (y - s.offY) + 'px';
+      const edge = 90;   // 接近上下邊緣時自動捲動
+      if (y < edge) window.scrollBy(0, -16);
+      else if (y > window.innerHeight - edge - 60) window.scrollBy(0, 16);
+      const t = this.target(x, y);
       if (t !== s.over) {
         if (s.over) s.over.classList.remove('is-over');
         if (t) t.classList.add('is-over');
         s.over = t;
       }
     },
-    onUp(e) {
-      const s = Drag.st;
-      if (!s || e.pointerId !== s.pid) return;
-      const t = s.moved ? Drag.target(e.clientX, e.clientY) : null;
-      const { id, onDrop, moved } = s;
-      Drag.cleanup();
-      if (moved) {
-        Drag.justDragged = true;
-        setTimeout(() => { Drag.justDragged = false; }, 80);
-        if (t && onDrop) onDrop(id, t.getAttribute('data-drop'));
-      }
+    end(x, y, cancelled) {
+      const s = this.st;
+      if (!s) return;
+      const t = s.moved && !cancelled ? this.target(x, y) : null;
+      const { id, moved } = s;
+      this.cleanup();
+      const h = this.h;
+      if (!h || !h.enabled || cancelled) return;
+      if (moved) { if (t) h.onDrop(id, t.getAttribute('data-drop')); }
+      else h.onTap(id);
     },
-    onCancel() { if (Drag.st && Drag.st.moved) { Drag.justDragged = true; setTimeout(() => { Drag.justDragged = false; }, 80); } Drag.cleanup(); },
     cleanup() {
       const s = this.st;
       if (!s) return;
       if (s.ghost && s.ghost.parentNode) s.ghost.parentNode.removeChild(s.ghost);
       if (s.over) s.over.classList.remove('is-over');
       if (s.el) s.el.classList.remove('is-source');
-      try { s.el.releasePointerCapture(s.pid); } catch (err) { /* ignore */ }
+      if (s.mode === 'pointer') { try { s.el.releasePointerCapture(s.key); } catch (err) { /* ignore */ } }
       document.body.classList.remove('qw-dragging');
-      window.removeEventListener('pointermove', Drag.onMove);
-      window.removeEventListener('pointerup', Drag.onUp);
-      window.removeEventListener('pointercancel', Drag.onCancel);
       this.st = null;
+    },
+
+    // ----- 觸控 -----
+    onTouchStart(e) {
+      const card = e.target.closest && e.target.closest('.card[data-card]');
+      if (!card || !Drag.h || !Drag.h.enabled) return;
+      e.preventDefault();                      // 關鍵：阻止捲動、下拉刷新、長按選單
+      if (Drag.st) return;                     // 已有一隻手指在拖
+      const t = e.changedTouches[0];
+      Drag._init(card, card.getAttribute('data-card'), t.clientX, t.clientY, 'touch', t.identifier);
+    },
+    findTouch(list) {
+      const s = Drag.st;
+      for (let i = 0; i < list.length; i++) if (list[i].identifier === s.key) return list[i];
+      return null;
+    },
+    onTouchMove(e) {
+      const s = Drag.st;
+      if (!s || s.mode !== 'touch') return;
+      const t = Drag.findTouch(e.changedTouches);
+      if (!t) return;
+      e.preventDefault();
+      Drag.moveTo(t.clientX, t.clientY);
+    },
+    onTouchEnd(e) {
+      const s = Drag.st;
+      if (!s || s.mode !== 'touch') return;
+      const t = Drag.findTouch(e.changedTouches);
+      if (!t) return;
+      e.preventDefault();
+      Drag.end(t.clientX, t.clientY, e.type === 'touchcancel');
+    },
+
+    // ----- 滑鼠、觸控筆 -----
+    onPointerDown(e) {
+      if (e.pointerType === 'touch') return;   // 觸控交給 Touch Events
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const card = e.target.closest && e.target.closest('.card[data-card]');
+      if (!card || !Drag.h || !Drag.h.enabled || Drag.st) return;
+      e.preventDefault();
+      Drag._init(card, card.getAttribute('data-card'), e.clientX, e.clientY, 'pointer', e.pointerId);
+      try { card.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    },
+    onPointerMove(e) {
+      const s = Drag.st;
+      if (!s || s.mode !== 'pointer' || e.pointerId !== s.key) return;
+      e.preventDefault();
+      Drag.moveTo(e.clientX, e.clientY);
+    },
+    onPointerUp(e) {
+      const s = Drag.st;
+      if (!s || s.mode !== 'pointer' || e.pointerId !== s.key) return;
+      Drag.end(e.clientX, e.clientY, e.type === 'pointercancel');
     }
   };
-  document.addEventListener('touchmove', (e) => { if (Drag.st && Drag.st.moved) e.preventDefault(); }, { passive: false });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) Drag.cleanup(); });
-  window.addEventListener('blur', () => Drag.cleanup());
+  const opt = { passive: false, capture: true };
+  document.addEventListener('touchstart', Drag.onTouchStart, opt);
+  document.addEventListener('touchmove', Drag.onTouchMove, opt);
+  document.addEventListener('touchend', Drag.onTouchEnd, opt);
+  document.addEventListener('touchcancel', Drag.onTouchEnd, opt);
+  document.addEventListener('pointerdown', Drag.onPointerDown, opt);
+  document.addEventListener('pointermove', Drag.onPointerMove, opt);
+  document.addEventListener('pointerup', Drag.onPointerUp, opt);
+  document.addEventListener('pointercancel', Drag.onPointerUp, opt);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) Drag.end(0, 0, true); });
+  window.addEventListener('blur', () => Drag.end(0, 0, true));
   document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('.card')) e.preventDefault(); });
 
   // ---------------------------------------------------------
@@ -269,19 +322,26 @@
       setMsg('');
     }, [solved, slotted]);
 
-    const onCardDown = (e, id) => { if (!solved) Drag.start(e, id, move); };
-    const onCardClick = (e, id) => {
-      e.stopPropagation();
-      if (Drag.justDragged || solved) return;
+    // 點一下卡片：選取；已選取另一張且點的是已放置的卡片 → 移到那個位置
+    const tap = (id) => {
+      if (solved) return;
       if (selected && selected !== id && where(id) !== 'pool') { move(selected, where(id)); return; }
       setSelected(selected === id ? null : id);
     };
+    const tapRef = useRef(tap); tapRef.current = tap;
+    const moveRef = useRef(move); moveRef.current = move;
+    useEffect(() => {
+      Drag.bind({ onDrop: (id, key) => moveRef.current(id, key), onTap: (id) => tapRef.current(id), enabled: !solved });
+      return () => { Drag.cleanup(); Drag.bind(null); };
+    }, [solved]);
+    // 鍵盤（Enter / 空白鍵）操作；滑鼠與觸控已由 Drag 處理
+    const onCardClick = (e, id) => { e.stopPropagation(); if (e.detail === 0) tap(id); };
     const onZoneClick = (key) => { if (selected && !solved) move(selected, key); };
     const onKeyZone = (e, key) => { if ((e.key === 'Enter' || e.key === ' ') && selected) { e.preventDefault(); move(selected, key); } };
 
     const Card = (c, big) => html`<button type="button" key=${c.id} data-card=${c.id}
         className=${cx('card', big && 'big', selected === c.id && 'is-selected', marks[c.id] === 'ok' && 'is-ok', marks[c.id] === 'bad' && 'is-bad')}
-        onPointerDown=${(e) => onCardDown(e, c.id)} onClick=${(e) => onCardClick(e, c.id)}
+        onClick=${(e) => onCardClick(e, c.id)}
         aria-pressed=${selected === c.id}>
         ${c.text}${marks[c.id] ? html`<span className="mark">${marks[c.id] === 'ok' ? '✓' : '✗'}</span>` : null}
       </button>`;
