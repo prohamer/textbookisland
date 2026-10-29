@@ -331,3 +331,7 @@ body.qw-dragging { overflow: hidden; touch-action: none; }
 .field { min-width: 0; }
 .card { -webkit-user-drag: none; }
 .pool, .zone, .slot { -webkit-user-select: none; user-select: none; }
+.cert .c-id { font-size: 13px; color: #5a6b70; border: 1px dashed #d8d0bb; border-radius: 8px; padding: 8px 12px; margin-top: 14px; line-height: 1.7; }
+.cert .c-id b { color: #22343a; margin-right: 8px; }
+.cert .c-id.is-flag { border-color: #cf4636; background: #fdf1ee; color: #22343a; }
+.cert .c-flag { display: inline-block; background: #cf4636; color: #fff; font-size: 12px; font-weight: 700; border-radius: 99px; padding: 0 8px; }

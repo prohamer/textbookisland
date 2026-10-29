@@ -31,7 +31,20 @@
   // ---------------------------------------------------------
   // 儲存（瀏覽器 localStorage，失敗時仍可遊玩）
   // ---------------------------------------------------------
-  const blankProgress = () => ({ v: 1, player: { name: '', cls: '', seat: '' }, font: 100, sec: {} });
+  const blankProgress = () => ({ v: 1, id: '', player: { name: '', cls: '', seat: '' }, font: 100, sec: {}, history: [] });
+  // 探險編號：每份進度一組，跟著進度碼走。兩張證書編號相同 = 同一份進度被複製。
+  const newExplorerId = () => {
+    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const n = new Uint8Array(7);
+    (window.crypto || window.msCrypto).getRandomValues(n);
+    const c = Array.from(n, (x) => A[x % A.length]).join('');
+    return c.slice(0, 3) + '-' + c.slice(3);
+  };
+  const ensureId = (p) => (p.id ? p : { ...p, id: newExplorerId(), history: p.history || [] });
+  const samePlayer = (a, b) => a.name === b.name && a.cls === b.cls && a.seat === b.seat;
+  const fmtStamp = (iso) => { if (!iso) return ''; const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const fmtPlayer = (pl) => [pl.name || '（未填姓名）', pl.cls && `${pl.cls}班`, pl.seat && `${pl.seat}號`].filter(Boolean).join(' ');
+  const flagged = (p) => (p.history || []).some((h) => h.t === 'rename' || h.t === 'import');
   const Store = {
     key: 'quizworld',
     load() {
@@ -683,6 +696,18 @@
   const who = (p) => p.player.name || '探險家';
   const whoLine = (p) => [p.player.cls && `${p.player.cls} 班`, p.player.seat && `${p.player.seat} 號`].filter(Boolean).join(' ');
 
+  // 身分紀錄：登記、改名、匯入進度碼，全部印在證書上供老師核對
+  function IdRecord({ prog }) {
+    const h = prog.history || [];
+    const text = (e) => e.t === 'register' ? `${fmtDate(e.at)} ${fmtStamp(e.at).split(' ')[1]}　首次登記為 ${fmtPlayer(e.to)}`
+      : e.t === 'rename' ? `${fmtDate(e.at)} ${fmtStamp(e.at).split(' ')[1]}　由 ${fmtPlayer(e.from)} 改為 ${fmtPlayer(e.to)}`
+      : `${fmtDate(e.at)} ${fmtStamp(e.at).split(' ')[1]}　匯入進度碼（碼內姓名：${fmtPlayer(e.to)}）${e.replaced ? `，取代了原本的 ${e.replaced}` : ''}`;
+    return html`<div className=${cx('c-id', flagged(prog) && 'is-flag')}>
+      <b>身分紀錄</b>${flagged(prog) ? html`<span className="c-flag">有修改或匯入紀錄</span>` : null}
+      ${h.length ? h.map((e, i) => html`<div key=${i}>${text(e)}</div>`) : html`<div>無登記紀錄</div>`}
+    </div>`;
+  }
+
   function ChapterCert({ ch, prog, world }) {
     const st = chapterStatus(ch, prog);
     const secs = playableSections(ch);
@@ -697,17 +722,18 @@
         </div>
       </div>
       <table>
-        <thead><tr><th>小節</th><th>星等</th><th>用時</th><th>檢查</th><th>答錯</th></tr></thead>
+        <thead><tr><th>小節</th><th>星等</th><th>用時</th><th>檢查</th><th>答錯</th><th>完成時間</th></tr></thead>
         <tbody>
-          ${secs.map((s) => { const r = prog.sec[s.id] || {}; return html`<tr key=${s.id}><td>${s.title}</td><td>${'★'.repeat(r.best || 0)}${'☆'.repeat(3 - (r.best || 0))}</td><td className="n">${fmtTime(r.time)}</td><td className="n">${r.attempts || 0}</td><td className="n">${r.wrong || 0}</td></tr>`; })}
-          <tr><td><b>合計</b></td><td><b>${st.stars} / ${st.maxStars}</b></td><td className="n"><b>${fmtTime(st.time)}</b></td><td className="n">${secs.reduce((a, s) => a + ((prog.sec[s.id] || {}).attempts || 0), 0)}</td><td className="n">${secs.reduce((a, s) => a + ((prog.sec[s.id] || {}).wrong || 0), 0)}</td></tr>
+          ${secs.map((s) => { const r = prog.sec[s.id] || {}; return html`<tr key=${s.id}><td>${s.title}</td><td>${'★'.repeat(r.best || 0)}${'☆'.repeat(3 - (r.best || 0))}</td><td className="n">${fmtTime(r.time)}</td><td className="n">${r.attempts || 0}</td><td className="n">${r.wrong || 0}</td><td className="n">${fmtDate(r.at)} ${fmtStamp(r.at).split(' ')[1] || ''}</td></tr>`; })}
+          <tr><td><b>合計</b></td><td><b>${st.stars} / ${st.maxStars}</b></td><td className="n"><b>${fmtTime(st.time)}</b></td><td className="n">${secs.reduce((a, s) => a + ((prog.sec[s.id] || {}).attempts || 0), 0)}</td><td className="n">${secs.reduce((a, s) => a + ((prog.sec[s.id] || {}).wrong || 0), 0)}</td><td></td></tr>
         </tbody>
       </table>
       ${logs.length ? html`<h3>錯誤記錄與正確答案（最近一次挑戰）</h3>
         ${logs.map((e, i) => html`<div className="c-err" key=${i}><b>${e.sec}・${e.level}</b><br/>
           ${e.items.map((it, j) => html`<div key=${j}>${it.text}：你放「${it.yours}」→ <span className="r">正確是「${it.right}」</span>${it.why ? `（${it.why}）` : ''}</div>`)}
         </div>`)}` : html`<h3>全部一次答對，零錯誤！</h3>`}
-      <div className="c-foot"><span>完成日期：${fmtDate(st.last)}</span><span>${world.subtitle}</span></div>
+      <${IdRecord} prog=${prog} />
+      <div className="c-foot"><span>完成日期：${fmtDate(st.last)}</span><span>探險編號 ${prog.id}</span></div>
     </div>`;
   }
 
@@ -740,7 +766,8 @@
           <tr><td><b>合計</b></td><td className="n"><b>${doneSec} / ${totalSec}</b></td><td className="n"><b>${stars}</b></td><td className="n"><b>${fmtTime(time)}</b></td><td><b>${doneCh} 座島插旗</b></td></tr>
         </tbody>
       </table>
-      <div className="c-foot"><span>產生日期：${fmtDate(new Date().toISOString())}</span><span>尚有 ${chs.length - live.length} 座島建置中</span></div>
+      <${IdRecord} prog=${prog} />
+      <div className="c-foot"><span>產生日期：${fmtDate(new Date().toISOString())}・尚有 ${chs.length - live.length} 座島建置中</span><span>探險編號 ${prog.id}</span></div>
     </div>`;
   }
 
@@ -789,14 +816,17 @@
     const [f, setF] = useState(prog.player);
     const set = (k) => (e) => setF({ ...f, [k]: e.target.value.slice(0, 20) });
     return html`<${Modal} title="探險家登記" onClose=${onClose}>
-      <p>名字會印在認證書上。也可以先略過，之後在右上角修改。</p>
+      ${prog.player.name
+        ? html`<p>目前登記：<b>${fmtPlayer(prog.player)}</b><br/><span className="note">登記後再修改，會留下修改紀錄並顯示在認證書上。</span></p>`
+        : html`<p>名字會印在認證書上。也可以先略過，之後在右上角登記。</p>`}
+      <p className="note">探險編號：<b className="num">${prog.id}</b></p>
       <form onSubmit=${(e) => { e.preventDefault(); onSave(f); }}>
         <div className="field-row">
           <div className="field"><label htmlFor="pname">姓名</label><input id="pname" value=${f.name} onChange=${set('name')} autoComplete="off" /></div>
           <div className="field"><label htmlFor="pcls">班級</label><input id="pcls" value=${f.cls} onChange=${set('cls')} inputMode="numeric" autoComplete="off" /></div>
           <div className="field"><label htmlFor="pseat">座號</label><input id="pseat" value=${f.seat} onChange=${set('seat')} inputMode="numeric" autoComplete="off" /></div>
         </div>
-        <div className="row"><button type="button" className="btn btn-soft" onClick=${onClose}>先略過</button><button type="submit" className="btn btn-primary">開始探險</button></div>
+        <div className="row"><button type="button" className="btn btn-soft" onClick=${onClose}>${prog.player.name ? '取消' : '先略過'}</button><button type="submit" className="btn btn-primary">${prog.player.name ? '儲存修改' : '開始探險'}</button></div>
       </form>
     <//>`;
   }
@@ -853,7 +883,7 @@
   // 主程式
   // ---------------------------------------------------------
   function App({ world, loadErrors }) {
-    const [prog, setProg] = useState(() => Store.load());
+    const [prog, setProg] = useState(() => ensureId(Store.load()));
     const [view, setView] = useState({ name: 'map' });
     const [bookId, setBookId] = useState(world.books[0].id);
     const [modal, setModal] = useState(() => (Store.load().player.name ? null : { kind: 'player' }));
@@ -902,13 +932,27 @@
     let m = null;
     if (modal) {
       const close = () => setModal(null);
-      if (modal.kind === 'player') m = html`<${PlayerModal} prog=${prog} onClose=${close} onSave=${(pl) => { setProg((p) => ({ ...p, player: pl })); close(); }} />`;
+      if (modal.kind === 'player') m = html`<${PlayerModal} prog=${prog} onClose=${close} onSave=${(raw) => {
+          const pl = { name: raw.name.trim(), cls: raw.cls.trim(), seat: raw.seat.trim() };
+          setProg((p) => {
+            if (samePlayer(pl, p.player)) return p;
+            const registered = (p.history || []).some((h) => h.t === 'register');
+            const ev = registered || p.player.name ? { t: 'rename', at: new Date().toISOString(), from: p.player, to: pl } : { t: 'register', at: new Date().toISOString(), to: pl };
+            return { ...p, player: pl, history: [...(p.history || []), ev] };
+          });
+          close();
+        }} />`;
       if (modal.kind === 'menu') m = html`<${MenuModal} onClose=${close} onPick=${(k) => setModal({ kind: k })} />`;
-      if (modal.kind === 'code') m = html`<${CodeModal} prog=${prog} storageKey=${Store.key} onClose=${close} onImport=${(p) => { setProg(p); setView({ name: 'map' }); close(); }} />`;
+      if (modal.kind === 'code') m = html`<${CodeModal} prog=${prog} storageKey=${Store.key} onClose=${close} onImport=${(p) => {
+          const ip = ensureId(p);
+          const ev = { t: 'import', at: new Date().toISOString(), to: ip.player, replaced: prog.id !== ip.id ? fmtPlayer(prog.player) : '' };
+          setProg({ ...ip, font: prog.font, history: [...(ip.history || []), ev] });
+          setView({ name: 'map' }); close();
+        }} />`;
       if (modal.kind === 'reset') m = html`<${Modal} title="清除所有進度？" onClose=${close}>
           <p>這台裝置上的姓名、星星、徽章與錯誤記錄都會刪除，無法復原。建議先到「進度碼」匯出備份。</p>
           <div className="row"><button className="btn btn-soft" onClick=${close}>取消</button>
-          <button className="btn btn-primary" onClick=${() => { Store.clear(); setProg(blankProgress()); setView({ name: 'map' }); setModal({ kind: 'player' }); }}>確定清除</button></div><//>`;
+          <button className="btn btn-primary" onClick=${() => { Store.clear(); setProg(ensureId(blankProgress())); setView({ name: 'map' }); setModal({ kind: 'player' }); }}>確定清除</button></div><//>`;
       if (modal.kind === 'celebrate') m = html`<${Modal} title="解鎖新徽章！" onClose=${close}>
           <div className="celebrate"><div className="badge-big"><${Medal} ch=${modal.ch} on=${true} size=${160} /></div>
           <p>你完成了「${modal.ch.title}」的所有小節，在這座島插上旗子了！</p></div>
