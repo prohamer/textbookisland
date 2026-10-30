@@ -379,9 +379,10 @@
         const items = level.items || [];
         keys.forEach((k, i) => {
           const c = inLoc(k)[0];
-          const ok = c && c.idx === i;
+          const it = items[i] || {};
+          const ok = c && (c.idx === i || c.text === it.text);
           newMarks[c.id] = ok ? 'ok' : 'bad';
-          if (!ok) entries.push({ text: `第 ${i + 1} 步`, yours: c.text, right: items[i].text, why: items[i].explain || '' });
+          if (!ok) entries.push({ text: it.hint || `第 ${i + 1} 步`, yours: c.text, right: it.text, why: it.explain || '' });
         });
       } else if (level.type === 'formula') {
         const right = level.right || [];
@@ -429,17 +430,47 @@
         </div>
       </div>`;
     } else if (level.type === 'order') {
-      board = html`<div className="board">
-        ${pool}
-        <div className="order-list">
-          ${keys.map((k, i) => { const c = inLoc(k)[0]; return html`<div className="slot-row" key=${k}>
-              <span className="no">${i + 1}</span>
-              <div className=${cx('slot', selected && !c && 'is-target')} data-drop=${k} role="button" tabIndex="0" aria-label=${`第 ${i + 1} 步`}
-                onClick=${() => onZoneClick(k)} onKeyDown=${(e) => onKeyZone(e, k)}>
-                ${c ? Card(c) : html`<span className="hint">第 ${i + 1} 步放這裡</span>`}
-              </div></div>`; })}
-        </div>
-      </div>`;
+      const items = level.items || [];
+      const renderSlot = (k, i) => {
+        const c = inLoc(k)[0];
+        const it = items[i] || {};
+        const no = it.stepNo || (i + 1);
+        const label = it.hint ? `${it.hint}放這裡` : `第 ${i + 1} 步放這裡`;
+        return html`<div className="slot-row" key=${k}>
+          <span className="no">${no}</span>
+          <div className=${cx('slot', selected && !c && 'is-target')} data-drop=${k} role="button" tabIndex="0" aria-label=${it.hint || `第 ${i + 1} 步`}
+            onClick=${() => onZoneClick(k)} onKeyDown=${(e) => onKeyZone(e, k)}>
+            ${c ? Card(c) : html`<span className="hint">${label}</span>`}
+          </div></div>`;
+      };
+      if (Array.isArray(level.branches) && level.branches.length) {
+        const sharedIdx = items.map((it, i) => (!it.branch ? i : -1)).filter((i) => i >= 0);
+        board = html`<div className="board">
+          ${pool}
+          <div className="order-tree">
+            ${sharedIdx.length ? html`<div className="order-shared">
+              <h4><span className="ic">🧬</span>共用起點（分裂前準備）</h4>
+              <div className="order-list">${sharedIdx.map((i) => renderSlot(keys[i], i))}</div>
+            </div>` : null}
+            <div className="order-branches">
+              ${level.branches.map((b) => {
+                const bIdx = items.map((it, i) => (it.branch === b.id ? i : -1)).filter((i) => i >= 0);
+                return html`<div key=${b.id} className="order-branch">
+                  <h4><span className="ic">${b.icon || ''}</span>${b.title}</h4>
+                  <div className="order-list">${bIdx.map((i) => renderSlot(keys[i], i))}</div>
+                </div>`;
+              })}
+            </div>
+          </div>
+        </div>`;
+      } else {
+        board = html`<div className="board">
+          ${pool}
+          <div className="order-list">
+            ${keys.map((k, i) => renderSlot(k, i))}
+          </div>
+        </div>`;
+      }
     } else if (level.type === 'formula') {
       const right = level.right || [];
       const ops = level.ops || Array(Math.max(0, right.length - 1)).fill(level.op || '×');

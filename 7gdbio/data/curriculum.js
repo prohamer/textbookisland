@@ -26,7 +26,7 @@ QuizWorld.defineCurriculum({
           sections: ['3·1 植物的運輸構造', '3·2 植物體內物質的運輸', '3·3 人體內物質的運輸', '3·4 人體的防禦作用'] },
         { id: '7a-4', no: '4', title: '生物的協調作用', icon: '🧠', color: '#3a86b4', data: 'data/7a-4.js',
           sections: ['4·1 神經系統', '4·2 內分泌系統', '4·3 生物的感應'] },
-        { id: '7a-5', no: '5', title: '生物的恆定性', icon: '⚖️', color: '#2f9c95', data: null,
+        { id: '7a-5', no: '5', title: '生物的恆定性', icon: '⚖️', color: '#2f9c95', data: 'data/7a-5.js',
           sections: ['5·1 恆定性與體溫的恆定', '5·2 呼吸與氣體的恆定', '5·3 血糖的恆定', '5·4 排泄作用與水分的恆定'] }
       ]
     },
@@ -34,7 +34,7 @@ QuizWorld.defineCurriculum({
       id: '7b',
       title: '七下',
       chapters: [
-        { id: '7b-1', no: '1', title: '生殖', icon: '🌱', color: '#e07a3f', data: null,
+        { id: '7b-1', no: '1', title: '生殖', icon: '🌱', color: '#e07a3f', data: 'data/7b-1.js',
           sections: ['1·1 細胞的分裂', '1·2 無性生殖', '1·3 有性生殖'] },
         { id: '7b-2', no: '2', title: '遺傳', icon: '🧬', color: '#8a7bc4', data: null,
           sections: ['2·1 解開遺傳的奧祕', '2·2 人類的遺傳', '2·3 突變', '2·4 生物技術的應用'] },
