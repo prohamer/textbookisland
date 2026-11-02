@@ -36,7 +36,7 @@ QuizWorld.defineCurriculum({
       chapters: [
         { id: '7b-1', no: '1', title: '生殖', icon: '🌱', color: '#e07a3f', data: 'data/7b-1.js',
           sections: ['1·1 細胞的分裂', '1·2 無性生殖', '1·3 有性生殖'] },
-        { id: '7b-2', no: '2', title: '遺傳', icon: '🧬', color: '#8a7bc4', data: null,
+        { id: '7b-2', no: '2', title: '遺傳', icon: '🧬', color: '#8a7bc4', data: 'data/7b-2.js',
           sections: ['2·1 解開遺傳的奧祕', '2·2 人類的遺傳', '2·3 突變', '2·4 生物技術的應用'] },
         { id: '7b-3', no: '3', title: '地球上的生物', icon: '🦎', color: '#5f9e4a', data: null,
           sections: ['3·1 持續改變的生命', '3·2 生物的命名與分類', '3·3 原核生物與原生生物', '3·4 真菌界', '3·5 植物界', '3·6 動物界'] },
