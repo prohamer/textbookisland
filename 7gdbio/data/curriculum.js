@@ -42,9 +42,9 @@ QuizWorld.defineCurriculum({
           sections: ['3·1 持續改變的生命', '3·2 生物的命名與分類', '3·3 原核生物與原生生物', '3·4 真菌界', '3·5 植物界', '3·6 動物界'] },
         { id: '7b-4', no: '4', title: '生態系', icon: '🌿', color: '#2f9c95', data: 'data/7b-4.js',
           sections: ['4·1 生物生存的環境', '4·2 能量的流動與物質的循環', '4·3 生物的交互關係', '4·4 多采多姿的生態系'] },
-        { id: '7b-5', no: '5', title: '人類與環境', icon: '🌏', color: '#3a86b4', data: null,
+        { id: '7b-5', no: '5', title: '人類與環境', icon: '🌏', color: '#3a86b4', data: 'data/7b-5.js',
           sections: ['5·1 生物多樣性的重要性與危機', '5·2 維護生物多樣性'] },
-        { id: '7b-x', no: '跨科', title: '人、植物與環境的共存關係', icon: '🌳', color: '#d1495b', data: null,
+        { id: '7b-x', no: '跨科', title: '人、植物與環境的共存關係', icon: '🌳', color: '#d1495b', data: 'data/7b-x.js',
           sections: ['第1節 植物對水土保持的重要性', '第2節 植物調節環境的能力'] }
       ]
     }
