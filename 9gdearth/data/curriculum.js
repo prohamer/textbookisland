@@ -25,7 +25,7 @@ QuizWorld.defineCurriculum({
           sections: ['2·1 地球內部與板塊運動', '2·2 從岩層讀地球歷史', '2·3 臺灣的板塊與地震'] },
         { id: 'e3', no: '3', title: '多變的天氣', icon: '⛅', color: '#2f9c95', data: 'data/e3.js',
           sections: ['3·1 大氣的成分與分層', '3·2 天氣要素的變化', '3·3 氣團與鋒面', '3·4 臺灣常見的氣象災害'] },
-        { id: 'ex', no: '跨科', title: '氣候變遷與我們的行動', icon: '🌡️', color: '#e07a3f', data: null,
+        { id: 'ex', no: '跨科', title: '氣候變遷與我們的行動', icon: '🌡️', color: '#e07a3f', data: 'data/ex.js',
           sections: ['第1節 海洋與大氣的互動', '第2節 溫室效應與全球暖化'] },
         { id: 'e4', no: '4', title: '宇宙與天體運行', icon: '🪐', color: '#8a7bc4', data: 'data/e4.js',
           sections: ['4·1 認識宇宙', '4·2 地球的自轉與公轉', '4·3 太陽、地球、月球的相對運動'] }
