@@ -30,7 +30,7 @@ QuizWorld.defineCurriculum({
           sections: ['2·1 物質的性質與分類', '2·2 水溶液與濃度', '2·3 空氣的成分'] },
         { id: 'pcx1', no: '跨科', title: '分離術要塞', icon: '🔍', color: '#8a7bc4', data: null,
           sections: ['第1節 物質的分離方法'] },
-        { id: 'pc3', no: '3', title: '聲波城', icon: '🔊', color: '#d1495b', data: null,
+        { id: 'pc3', no: '3', title: '聲波城', icon: '🔊', color: '#d1495b', data: 'data/pc3.js',
           sections: ['3·1 波的傳播', '3·2 聲音的產生與傳播', '3·3 聲波的反射與超聲波', '3·4 響度、音調與音色'] },
         { id: 'pc4', no: '4', title: '光之城', icon: '💡', color: '#e0a526', data: 'data/pc4.js',
           sections: ['4·1 光的直進與光速', '4·2 光的反射與面鏡', '4·3 光的折射與透鏡', '4·4 光學儀器', '4·5 光與顏色'] },
