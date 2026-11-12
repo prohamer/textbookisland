@@ -2,12 +2,49 @@
  * 探險群島闖關引擎
  * 讀取 data/curriculum.js 與各章資料檔，自動產生地圖、關卡、證書。
  * 新增章節只需要新增資料檔，這個檔案不需要修改。
+ *
+ * 地圖主題：curriculum.js 的 theme 欄位
+ *   沒寫或 'island' → 海洋群島（生物、地科）
+ *   'castle'        → 城堡王國（理化）
  * ========================================================= */
 (function () {
   'use strict';
   const { useState, useEffect, useRef, useMemo, useCallback } = React;
   const html = htm.bind(React.createElement);
   const QW = window.QuizWorld;
+
+  // ---------------------------------------------------------
+  // 主題用語
+  // ---------------------------------------------------------
+  const THEMES = {
+    island: {
+      progress: '航海進度', legendOpen: '可探險', legendDone: '已插旗、解鎖徽章', legendBuild: '建置中',
+      building: '建置中', doneTag: '已解鎖徽章', doneState: '已插旗', inProgress: '探險中',
+      backPlace: '回到島嶼', placeHead: '島嶼', chNo: (n) => `第 ${n} 章`,
+      certName: '探險認證書', certBtn: '本島認證書', certWho: '完成本島所有關卡',
+      heroDone: (s, m) => `已插旗！共獲得 ${s} / ${m} 顆星。`,
+      heroTodo: (d, t) => `完成 ${d} / ${t} 節。依序完成所有小節，就能解鎖本島徽章。`,
+      heroBuild: '這座島的關卡還在建置中，敬請期待。',
+      celebrateTitle: '解鎖新徽章！', celebrate: (t) => `你完成了「${t}」的所有小節，在這座島插上旗子了！`,
+      doneCount: (n) => `${n} 座島插旗`, buildLeft: (n) => `尚有 ${n} 座島建置中`,
+      player: '探險家', playerTitle: '探險家登記', start: '開始探險', idName: '探險編號', mission: '總任務報告'
+    },
+    castle: {
+      progress: '攻城進度', legendOpen: '可挑戰', legendDone: '已攻克、升起旗幟', legendBuild: '施工中',
+      building: '施工中', doneTag: '已攻克', doneState: '已攻克', inProgress: '攻城中',
+      backPlace: '回到城堡', placeHead: '城堡', chNo: (n) => `第 ${n} 城`,
+      certName: '攻城勳章證書', certBtn: '攻城勳章證書', certWho: '攻下本城堡所有關卡',
+      heroDone: (s, m) => `已攻克！共獲得 ${s} / ${m} 顆星。`,
+      heroTodo: (d, t) => `完成 ${d} / ${t} 節。依序攻下所有小節，就能攻克這座城堡、獲得勳章。`,
+      heroBuild: '這座城堡還在施工中，敬請期待。',
+      celebrateTitle: '獲得新勳章！', celebrate: (t) => `你攻下了「${t}」的所有小節，城塔升起你的旗幟了！`,
+      doneCount: (n) => `攻克 ${n} 座城堡`, buildLeft: (n) => `尚有 ${n} 座城堡施工中`,
+      player: '騎士', playerTitle: '騎士登記', start: '開始冒險', idName: '騎士編號', mission: '總任務報告'
+    }
+  };
+  let T = THEMES.island;
+  // 章號顯示：'跨科' → 跨科主題；數字 → 第 N 章／第 N 城；其他文字照原樣（例如「入門」）
+  const noLabel = (ch) => (ch.no === '跨科' ? '跨科主題' : /^\d+$/.test(String(ch.no)) ? T.chNo(ch.no) : String(ch.no || ''));
 
   // ---------------------------------------------------------
   // 小工具
@@ -75,6 +112,7 @@
   // 整理資料：合併 curriculum 與各章題目
   // ---------------------------------------------------------
   function buildWorld(cur) {
+    const theme = THEMES[cur.theme] ? cur.theme : 'island';
     const books = cur.books.map((b) => ({
       ...b,
       chapters: b.chapters.map((ch) => {
@@ -83,10 +121,10 @@
         const sections = hasData
           ? data.sections.map((s, i) => ({ id: s.id || `${ch.id}-${i + 1}`, title: s.title || `第 ${i + 1} 節`, levels: Array.isArray(s.levels) ? s.levels : [] }))
           : (ch.sections || []).map((t, i) => ({ id: `${ch.id}-${i + 1}`, title: t, levels: [] }));
-        return { ...ch, book: b, hasData, sections, color: ch.color || '#2c7a8c', icon: ch.icon || '🏝️' };
+        return { ...ch, book: b, hasData, sections, color: ch.color || '#2c7a8c', icon: ch.icon || (theme === 'castle' ? '🏰' : '🏝️') };
       })
     }));
-    return { ...cur, books };
+    return { ...cur, theme, books };
   }
   const playableSections = (ch) => ch.sections.filter((s) => s.levels.length > 0);
   function chapterStatus(ch, prog) {
@@ -379,10 +417,9 @@
         const items = level.items || [];
         keys.forEach((k, i) => {
           const c = inLoc(k)[0];
-          const it = items[i] || {};
-          const ok = c && (c.idx === i || c.text === it.text);
+          const ok = c && c.idx === i;
           newMarks[c.id] = ok ? 'ok' : 'bad';
-          if (!ok) entries.push({ text: it.hint || `第 ${i + 1} 步`, yours: c.text, right: it.text, why: it.explain || '' });
+          if (!ok) entries.push({ text: `第 ${i + 1} 步`, yours: c.text, right: items[i].text, why: items[i].explain || '' });
         });
       } else if (level.type === 'formula') {
         const right = level.right || [];
@@ -430,47 +467,17 @@
         </div>
       </div>`;
     } else if (level.type === 'order') {
-      const items = level.items || [];
-      const renderSlot = (k, i) => {
-        const c = inLoc(k)[0];
-        const it = items[i] || {};
-        const no = it.stepNo || (i + 1);
-        const label = it.hint ? `${it.hint}放這裡` : `第 ${i + 1} 步放這裡`;
-        return html`<div className="slot-row" key=${k}>
-          <span className="no">${no}</span>
-          <div className=${cx('slot', selected && !c && 'is-target')} data-drop=${k} role="button" tabIndex="0" aria-label=${it.hint || `第 ${i + 1} 步`}
-            onClick=${() => onZoneClick(k)} onKeyDown=${(e) => onKeyZone(e, k)}>
-            ${c ? Card(c) : html`<span className="hint">${label}</span>`}
-          </div></div>`;
-      };
-      if (Array.isArray(level.branches) && level.branches.length) {
-        const sharedIdx = items.map((it, i) => (!it.branch ? i : -1)).filter((i) => i >= 0);
-        board = html`<div className="board">
-          ${pool}
-          <div className="order-tree">
-            ${sharedIdx.length ? html`<div className="order-shared">
-              <h4><span className="ic">🧬</span>共用起點（分裂前準備）</h4>
-              <div className="order-list">${sharedIdx.map((i) => renderSlot(keys[i], i))}</div>
-            </div>` : null}
-            <div className="order-branches">
-              ${level.branches.map((b) => {
-                const bIdx = items.map((it, i) => (it.branch === b.id ? i : -1)).filter((i) => i >= 0);
-                return html`<div key=${b.id} className="order-branch">
-                  <h4><span className="ic">${b.icon || ''}</span>${b.title}</h4>
-                  <div className="order-list">${bIdx.map((i) => renderSlot(keys[i], i))}</div>
-                </div>`;
-              })}
-            </div>
-          </div>
-        </div>`;
-      } else {
-        board = html`<div className="board">
-          ${pool}
-          <div className="order-list">
-            ${keys.map((k, i) => renderSlot(k, i))}
-          </div>
-        </div>`;
-      }
+      board = html`<div className="board">
+        ${pool}
+        <div className="order-list">
+          ${keys.map((k, i) => { const c = inLoc(k)[0]; return html`<div className="slot-row" key=${k}>
+              <span className="no">${i + 1}</span>
+              <div className=${cx('slot', selected && !c && 'is-target')} data-drop=${k} role="button" tabIndex="0" aria-label=${`第 ${i + 1} 步`}
+                onClick=${() => onZoneClick(k)} onKeyDown=${(e) => onKeyZone(e, k)}>
+                ${c ? Card(c) : html`<span className="hint">第 ${i + 1} 步放這裡</span>`}
+              </div></div>`; })}
+        </div>
+      </div>`;
     } else if (level.type === 'formula') {
       const right = level.right || [];
       const ops = level.ops || Array(Math.max(0, right.length - 1)).fill(level.op || '×');
@@ -531,8 +538,8 @@
     };
     return html`<div className="play">
       <div className="playbar qw-gutter">
-        <button className="btn btn-soft btn-icon" onClick=${onExit} aria-label="回到島嶼">${I.back()}</button>
-        <div className="where"><small>${chapter.book.title}・${chapter.no === '跨科' ? '跨科主題' : '第' + chapter.no + '章'} ${chapter.title}</small><b>${section.title}</b></div>
+        <button className="btn btn-soft btn-icon" onClick=${onExit} aria-label=${T.backPlace}>${I.back()}</button>
+        <div className="where"><small>${chapter.book.title}・${noLabel(chapter)} ${chapter.title}</small><b>${section.title}</b></div>
         <div className="lvdots" aria-label=${`第 ${idx + 1} 關，共 ${levels.length} 關`}>
           ${levels.map((_, i) => html`<i key=${i} className=${i < idx ? 'done' : i === idx ? 'now' : ''}>${i < idx ? '✓' : i + 1}</i>`)}
         </div>
@@ -567,18 +574,16 @@
     return w;
   }
 
-  function SeaMap({ book, prog, onOpen }) {
-    const ref = useRef(null);
-    const W = useWidth(ref);
-    const n = book.chapters.length;
-    const cols = W < 560 ? 2 : 3;
+  // 蛇行排列：每列由左到右、下一列由右到左，用曲線連起來
+  function routeLayout(n, W, castle) {
+    const cols = W < 560 ? 2 : castle && W >= 1000 ? 4 : 3;
     const rows = Math.ceil(n / cols);
     const colW = W / cols;
     const iw = Math.min(230, colW * 0.74);
     const shapeH = iw * 0.75;
     const rowH = shapeH + 96;
     const H = rows * rowH + 40;
-    const pts = book.chapters.map((ch, i) => {
+    const pts = Array.from({ length: n }, (_, i) => {
       const r = Math.floor(i / cols); let c = i % cols; if (r % 2) c = cols - 1 - c;
       const x = (c + 0.5) * colW + JX[i % JX.length] * colW;
       const y = 28 + r * rowH + shapeH / 2 + (c % 2 ? 14 : 0);
@@ -590,6 +595,21 @@
       const a = pts[i - 1]; const same = Math.abs(a.y - p.y) < rowH / 2;
       d += same ? ` C${(a.x + p.x) / 2},${a.y - 46} ${(a.x + p.x) / 2},${p.y + 46} ${p.x},${p.y}` : ` C${a.x + (a.x > W / 2 ? 90 : -90)},${a.y + rowH * 0.55} ${p.x + (p.x > W / 2 ? 90 : -90)},${p.y - rowH * 0.55} ${p.x},${p.y}`;
     });
+    return { iw, shapeH, H, pts, d };
+  }
+
+  const placeLabel = (ch, st) => html`<span className="label">
+      <span>${noLabel(ch)}</span>
+      <b>${ch.title}</b>
+      ${!ch.hasData ? html`<span><span className="tag tag-build">${T.building}</span></span>`
+        : st.complete ? html`<span><span className="tag tag-done">${T.doneTag}</span></span>`
+        : html`<span className="num">完成 ${st.done} / ${st.total} 節</span>`}
+    </span>`;
+
+  function SeaMap({ book, prog, onOpen }) {
+    const ref = useRef(null);
+    const W = useWidth(ref);
+    const { iw, shapeH, H, pts, d } = routeLayout(book.chapters.length, W, false);
     return html`<div className="sea" ref=${ref} style=${{ height: H + 'px' }}>
       <svg className="sea-route" viewBox=${`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
         <path d=${d} fill="none" stroke="rgba(255,255,255,.55)" stroke-width="4" stroke-dasharray="2 12" stroke-linecap="round" />
@@ -608,13 +628,77 @@
           </svg>
           <span className="emblem" aria-hidden="true">${ch.icon}</span>
           ${st.complete ? html`<svg className="flag" viewBox="0 0 40 50" aria-hidden="true"><path d="M8 4v44" stroke="#22343a" stroke-width="3"/><path d="M9 5h26l-7 8 7 8H9z" fill="#e4b03a" stroke="#b98a1d" stroke-width="1.5"/></svg>` : null}
-          <span className="label">
-            <span>${ch.no === '跨科' ? '跨科主題' : `第 ${ch.no} 章`}</span>
-            <b>${ch.title}</b>
-            ${!ch.hasData ? html`<span><span className="tag tag-build">建置中</span></span>`
-              : st.complete ? html`<span><span className="tag tag-done">已解鎖徽章</span></span>`
-              : html`<span className="num">完成 ${st.done} / ${st.total} 節</span>`}
-          </span>
+          ${placeLabel(ch, st)}
+        </button>`;
+      })}
+    </div>`;
+  }
+
+  // 城堡圖：viewBox 200×150，和島嶼同尺寸，排版共用
+  // state：build 施工中（灰、鷹架）／open 可挑戰（城門關著）／done 已攻克（城門開、金旗）
+  function CastleArt({ color, state }) {
+    const stone = state === 'build' ? '#c9c4b8' : '#e9e1cf';
+    const stoneDark = state === 'build' ? '#a9a497' : '#c7b998';
+    const roof = state === 'build' ? '#9a958a' : color;
+    const flag = state === 'done' ? '#e4b03a' : state === 'open' ? color : null;
+    const merl = (x0, y, w, n) => Array.from({ length: n }, (_, k) => html`<rect key=${k} x=${x0 + k * (w / n) + 1} y=${y - 7} width=${w / n - 3} height="8" fill=${stone} stroke=${stoneDark} stroke-width="1.5" />`);
+    return html`<svg className="shape" viewBox="0 0 200 150" aria-hidden="true">
+      <ellipse cx="100" cy="128" rx="92" ry="18" fill="rgba(0,0,0,.12)" />
+      <ellipse cx="100" cy="124" rx="88" ry="16" fill=${state === 'build' ? '#9fb08a' : '#7fae5a'} />
+      <rect x="46" y="70" width="108" height="54" fill=${stone} stroke=${stoneDark} stroke-width="2" />
+      ${merl(46, 70, 108, 9)}
+      <rect x="26" y="52" width="30" height="72" fill=${stone} stroke=${stoneDark} stroke-width="2" />
+      <rect x="144" y="52" width="30" height="72" fill=${stone} stroke=${stoneDark} stroke-width="2" />
+      <path d="M22 54 L41 22 L60 54Z" fill=${roof} stroke="rgba(0,0,0,.18)" stroke-width="1.5" />
+      <path d="M140 54 L159 22 L178 54Z" fill=${roof} stroke="rgba(0,0,0,.18)" stroke-width="1.5" />
+      <rect x="78" y="34" width="44" height="90" fill=${stone} stroke=${stoneDark} stroke-width="2" />
+      <path d="M72 36 L100 2 L128 36Z" fill=${roof} stroke="rgba(0,0,0,.18)" stroke-width="1.5" />
+      <rect x="36" y="74" width="10" height="14" rx="5" fill="#5b5346" opacity=".55" />
+      <rect x="154" y="74" width="10" height="14" rx="5" fill="#5b5346" opacity=".55" />
+      ${state === 'done'
+        ? html`<path d="M86 124 V102 a14 14 0 0 1 28 0 V124Z" fill="#3a2e22" /><path d="M86 124 V102 a14 14 0 0 1 28 0" fill="none" stroke="#e4b03a" stroke-width="3" />`
+        : html`<path d="M86 124 V102 a14 14 0 0 1 28 0 V124Z" fill="#8a5a33" stroke="#5e3b1f" stroke-width="2" /><path d="M93 124 V100 M100 124 V98 M107 124 V100" stroke="#5e3b1f" stroke-width="1.5" />`}
+      ${flag ? html`<path d="M100 2 V-22" stroke="#3a2e22" stroke-width="2.5" /><path d=${state === 'done' ? 'M101 -22 h30 l-8 8 8 8 h-30z' : 'M101 -22 h18 l-5 5 5 5 h-18z'} fill=${flag} stroke="rgba(0,0,0,.25)" stroke-width="1" />` : null}
+      ${state === 'build' ? html`<g stroke="#b07a3c" stroke-width="3" stroke-linecap="round" opacity=".9">
+          <path d="M60 124 V58 M90 124 V58 M60 70 H90 M60 96 H90 M60 70 L90 96 M60 96 L90 122" />
+        </g>` : null}
+    </svg>`;
+  }
+
+  function CastleMap({ book, prog, onOpen }) {
+    const ref = useRef(null);
+    const W = useWidth(ref);
+    const { iw, shapeH, H, pts, d } = routeLayout(book.chapters.length, W, true);
+    // 第一次打開地圖：自動捲到「下一座還沒攻克、有題目的城堡」
+    const nextId = useMemo(() => { const c = book.chapters.find((ch) => ch.hasData && !chapterStatus(ch, prog).complete); return c ? c.id : null; }, [book, prog]);
+    const scrolled = useRef(false);
+    useEffect(() => {
+      if (scrolled.current || !nextId || !ref.current || W === 900) return;
+      scrolled.current = true;
+      const el = ref.current.querySelector(`[data-ch="${nextId}"]`);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      if (r.top < 80 || r.bottom > window.innerHeight - 20) {
+        const y = window.scrollY + r.top - window.innerHeight / 2 + r.height / 2;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      }
+    }, [nextId, W]);
+    return html`<div className="sea land" ref=${ref} style=${{ height: H + 'px', '--iw0': iw + 'px' }}>
+      <svg className="sea-route" viewBox=${`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+        <path d=${d} fill="none" stroke="rgba(110,82,50,.45)" stroke-width="16" stroke-linecap="round" />
+        <path d=${d} fill="none" stroke="#e3d3ad" stroke-width="10" stroke-linecap="round" />
+        <path d=${d} fill="none" stroke="rgba(150,120,80,.55)" stroke-width="2" stroke-dasharray="8 10" stroke-linecap="round" />
+      </svg>
+      ${book.chapters.map((ch, i) => {
+        const st = chapterStatus(ch, prog);
+        const p = pts[i];
+        const state = !ch.hasData ? 'build' : st.complete ? 'done' : 'open';
+        return html`<button key=${ch.id} data-ch=${ch.id} className=${cx('island', 'castle', !ch.hasData && 'is-building', st.complete && 'is-done', ch.id === nextId && 'is-next')}
+            style=${{ '--iw': iw + 'px', left: p.x - iw / 2 + 'px', top: p.y - shapeH / 2 + 'px' }}
+            onClick=${() => onOpen(ch)} aria-label=${`${ch.title}，${ch.hasData ? `完成 ${st.done}/${st.total} 節` : T.building}`}>
+          <${CastleArt} color=${ch.color} state=${state} />
+          <span className="emblem" aria-hidden="true">${ch.icon}</span>
+          ${placeLabel(ch, st)}
         </button>`;
       })}
     </div>`;
@@ -625,28 +709,29 @@
     const all = world.books.flatMap((b) => b.chapters).filter((c) => c.hasData);
     const totalSec = all.reduce((a, c) => a + playableSections(c).length, 0);
     const doneSec = all.reduce((a, c) => a + chapterStatus(c, prog).done, 0);
+    const castle = world.theme === 'castle';
     return html`<div className="map-wrap qw-gutter">
       <div className="map-head">
         <div className="book-tabs" role="group" aria-label="選擇冊別">
           ${world.books.map((b) => html`<button key=${b.id} aria-pressed=${b.id === book.id} onClick=${() => setBookId(b.id)}>${b.title}</button>`)}
         </div>
         <div className="voyage">
-          <span>航海進度</span>
+          <span>${T.progress}</span>
           <span className="bar"><i style=${{ width: (totalSec ? (doneSec / totalSec) * 100 : 0) + '%' }}></i></span>
           <span className="num">${doneSec} / ${totalSec} 節</span>
         </div>
       </div>
-      <${SeaMap} book=${book} prog=${prog} onOpen=${onOpen} />
+      ${castle ? html`<${CastleMap} book=${book} prog=${prog} onOpen=${onOpen} />` : html`<${SeaMap} book=${book} prog=${prog} onOpen=${onOpen} />`}
       <div className="map-legend">
-        <span><span className="dot" style=${{ background: '#6e9b4c' }}></span>可探險</span>
-        <span><span className="dot" style=${{ background: '#e4b03a' }}></span>已插旗、解鎖徽章</span>
-        <span><span className="dot" style=${{ background: '#9aa7a8' }}></span>建置中</span>
+        <span><span className="dot" style=${{ background: castle ? '#8a5a33' : '#6e9b4c' }}></span>${T.legendOpen}</span>
+        <span><span className="dot" style=${{ background: '#e4b03a' }}></span>${T.legendDone}</span>
+        <span><span className="dot" style=${{ background: '#9aa7a8' }}></span>${T.legendBuild}</span>
       </div>
     </div>`;
   }
 
   // ---------------------------------------------------------
-  // 島嶼（章）
+  // 島嶼／城堡（章）
   // ---------------------------------------------------------
   function ChapterView({ ch, prog, onBack, onPlay, onCert }) {
     const st = chapterStatus(ch, prog);
@@ -655,13 +740,11 @@
       <div className="island-hero">
         <div className="badge-big"><${Medal} ch=${ch} on=${st.complete} size=${96} /></div>
         <div>
-          <small className="note">${ch.book.title}・${ch.no === '跨科' ? '跨科主題' : '第 ' + ch.no + ' 章'}</small>
+          <small className="note">${ch.book.title}・${noLabel(ch)}</small>
           <h2>${ch.title}</h2>
-          <p>${ch.hasData
-            ? st.complete ? `已插旗！共獲得 ${st.stars} / ${st.maxStars} 顆星。` : `完成 ${st.done} / ${st.total} 節。依序完成所有小節，就能解鎖本島徽章。`
-            : '這座島的關卡還在建置中，敬請期待。'}</p>
+          <p>${ch.hasData ? st.complete ? T.heroDone(st.stars, st.maxStars) : T.heroTodo(st.done, st.total) : T.heroBuild}</p>
           ${ch.hasData ? html`<div className="actions">
-            <button className="btn btn-soft" disabled=${!st.complete} onClick=${onCert}>${I.scroll()}${st.complete ? '本島認證書' : '全部完成後可領取認證書'}</button>
+            <button className="btn btn-soft" disabled=${!st.complete} onClick=${onCert}>${I.scroll()}${st.complete ? T.certBtn : '全部完成後可領取認證書'}</button>
           </div>` : null}
         </div>
       </div>
@@ -715,7 +798,7 @@
       ${result.log.length ? html`<h3 style=${{ marginBottom: 10 }}>錯誤記錄與正確答案</h3><${ErrList} log=${result.log} />` : html`<p style=${{ textAlign: 'center' }}>一次都沒有答錯，太厲害了！</p>`}
       <div className="result-actions">
         <button className="btn btn-soft" onClick=${onAgain}>${I.redo()}再挑戰一次</button>
-        <button className="btn btn-soft" onClick=${onBack}>${I.map()}回到島嶼</button>
+        <button className="btn btn-soft" onClick=${onBack}>${I.map()}${T.backPlace}</button>
         ${nextIdx != null ? html`<button className="btn btn-primary" onClick=${onNext}>下一節：${ch.sections[nextIdx].title}</button>` : null}
       </div>
     </div></div></div>`;
@@ -724,7 +807,7 @@
   // ---------------------------------------------------------
   // 證書
   // ---------------------------------------------------------
-  const who = (p) => p.player.name || '探險家';
+  const who = (p) => p.player.name || T.player;
   const whoLine = (p) => [p.player.cls && `${p.player.cls} 班`, p.player.seat && `${p.player.seat} 號`].filter(Boolean).join(' ');
 
   // 身分紀錄：登記、改名、匯入進度碼，全部印在證書上供老師核對
@@ -748,8 +831,8 @@
         <${Medal} ch=${ch} on=${true} size=${110} />
         <div>
           <div className="c-kicker">${world.title}・${ch.book.title}</div>
-          <h1>${ch.title} 探險認證書</h1>
-          <div className="c-who">恭喜 <b>${who(prog)}</b> ${whoLine(prog)} 完成本島所有關卡</div>
+          <h1>${ch.title} ${T.certName}</h1>
+          <div className="c-who">恭喜 <b>${who(prog)}</b> ${whoLine(prog)} ${T.certWho}</div>
         </div>
       </div>
       <table>
@@ -764,7 +847,7 @@
           ${e.items.map((it, j) => html`<div key=${j}>${it.text}：你放「${it.yours}」→ <span className="r">正確是「${it.right}」</span>${it.why ? `（${it.why}）` : ''}</div>`)}
         </div>`)}` : html`<h3>全部一次答對，零錯誤！</h3>`}
       <${IdRecord} prog=${prog} />
-      <div className="c-foot"><span>完成日期：${fmtDate(st.last)}</span><span>探險編號 ${prog.id}</span></div>
+      <div className="c-foot"><span>完成日期：${fmtDate(st.last)}</span><span>${T.idName} ${prog.id}</span></div>
     </div>`;
   }
 
@@ -779,26 +862,26 @@
     return html`<div className="cert">
       <div className="c-top" style=${{ display: 'block' }}>
         <div className="c-kicker">${world.subtitle}</div>
-        <h1>${world.title} 總任務報告</h1>
-        <div className="c-who">探險家 <b>${who(prog)}</b> ${whoLine(prog)}</div>
+        <h1>${world.title} ${T.mission}</h1>
+        <div className="c-who">${T.player} <b>${who(prog)}</b> ${whoLine(prog)}</div>
       </div>
       ${world.books.map((b) => html`<div key=${b.id}>
         <h3>${b.title}</h3>
         <div className="badges">${b.chapters.map((c) => { const st = chapterStatus(c, prog); return html`<div key=${c.id}>
           <${Medal} ch=${c} on=${st.complete} size=${84} />
           <div style=${{ marginTop: 4, fontWeight: 700 }}>${c.title}</div>
-          <div>${c.hasData ? `${st.done}/${st.total} 節` : '建置中'}</div></div>`; })}</div>
+          <div>${c.hasData ? `${st.done}/${st.total} 節` : T.building}</div></div>`; })}</div>
       </div>`)}
       <table>
-        <thead><tr><th>島嶼</th><th>完成小節</th><th>星星</th><th>用時</th><th>狀態</th></tr></thead>
+        <thead><tr><th>${T.placeHead}</th><th>完成小節</th><th>星星</th><th>用時</th><th>狀態</th></tr></thead>
         <tbody>${live.map((c) => { const st = chapterStatus(c, prog); return html`<tr key=${c.id}>
           <td>${c.book.title}・${c.title}</td><td className="n">${st.done} / ${st.total}</td><td className="n">${st.stars} / ${st.maxStars}</td><td className="n">${fmtTime(st.time)}</td>
-          <td>${st.complete ? '已插旗' : st.done ? '探險中' : '未開始'}</td></tr>`; })}
-          <tr><td><b>合計</b></td><td className="n"><b>${doneSec} / ${totalSec}</b></td><td className="n"><b>${stars}</b></td><td className="n"><b>${fmtTime(time)}</b></td><td><b>${doneCh} 座島插旗</b></td></tr>
+          <td>${st.complete ? T.doneState : st.done ? T.inProgress : '未開始'}</td></tr>`; })}
+          <tr><td><b>合計</b></td><td className="n"><b>${doneSec} / ${totalSec}</b></td><td className="n"><b>${stars}</b></td><td className="n"><b>${fmtTime(time)}</b></td><td><b>${T.doneCount(doneCh)}</b></td></tr>
         </tbody>
       </table>
       <${IdRecord} prog=${prog} />
-      <div className="c-foot"><span>產生日期：${fmtDate(new Date().toISOString())}・尚有 ${chs.length - live.length} 座島建置中</span><span>探險編號 ${prog.id}</span></div>
+      <div className="c-foot"><span>產生日期：${fmtDate(new Date().toISOString())}・${T.buildLeft(chs.length - live.length)}</span><span>${T.idName} ${prog.id}</span></div>
     </div>`;
   }
 
@@ -846,18 +929,18 @@
   function PlayerModal({ prog, onSave, onClose }) {
     const [f, setF] = useState(prog.player);
     const set = (k) => (e) => setF({ ...f, [k]: e.target.value.slice(0, 20) });
-    return html`<${Modal} title="探險家登記" onClose=${onClose}>
+    return html`<${Modal} title=${T.playerTitle} onClose=${onClose}>
       ${prog.player.name
         ? html`<p>目前登記：<b>${fmtPlayer(prog.player)}</b><br/><span className="note">登記後再修改，會留下修改紀錄並顯示在認證書上。</span></p>`
         : html`<p>名字會印在認證書上。也可以先略過，之後在右上角登記。</p>`}
-      <p className="note">探險編號：<b className="num">${prog.id}</b></p>
+      <p className="note">${T.idName}：<b className="num">${prog.id}</b></p>
       <form onSubmit=${(e) => { e.preventDefault(); onSave(f); }}>
         <div className="field-row">
           <div className="field"><label htmlFor="pname">姓名</label><input id="pname" value=${f.name} onChange=${set('name')} autoComplete="off" /></div>
           <div className="field"><label htmlFor="pcls">班級</label><input id="pcls" value=${f.cls} onChange=${set('cls')} inputMode="numeric" autoComplete="off" /></div>
           <div className="field"><label htmlFor="pseat">座號</label><input id="pseat" value=${f.seat} onChange=${set('seat')} inputMode="numeric" autoComplete="off" /></div>
         </div>
-        <div className="row"><button type="button" className="btn btn-soft" onClick=${onClose}>${prog.player.name ? '取消' : '先略過'}</button><button type="submit" className="btn btn-primary">${prog.player.name ? '儲存修改' : '開始探險'}</button></div>
+        <div className="row"><button type="button" className="btn btn-soft" onClick=${onClose}>${prog.player.name ? '取消' : '先略過'}</button><button type="submit" className="btn btn-primary">${prog.player.name ? '儲存修改' : T.start}</button></div>
       </form>
     <//>`;
   }
@@ -901,7 +984,7 @@
   function MenuModal({ onPick, onClose }) {
     return html`<${Modal} title="選單" onClose=${onClose}>
       <div className="menu-list">
-        <button className="btn btn-soft" onClick=${() => onPick('mission')}>${I.scroll()}總任務報告</button>
+        <button className="btn btn-soft" onClick=${() => onPick('mission')}>${I.scroll()}${T.mission}</button>
         <button className="btn btn-soft" onClick=${() => onPick('code')}>⇄ 進度碼（換裝置用）</button>
         <button className="btn btn-soft" onClick=${() => onPick('player')}>${I.user()}修改姓名、班級、座號</button>
         <button className="btn btn-soft danger" onClick=${() => onPick('reset')}>清除這台裝置的所有進度</button>
@@ -984,12 +1067,12 @@
           <p>這台裝置上的姓名、星星、徽章與錯誤記錄都會刪除，無法復原。建議先到「進度碼」匯出備份。</p>
           <div className="row"><button className="btn btn-soft" onClick=${close}>取消</button>
           <button className="btn btn-primary" onClick=${() => { Store.clear(); setProg(ensureId(blankProgress())); setView({ name: 'map' }); setModal({ kind: 'player' }); }}>確定清除</button></div><//>`;
-      if (modal.kind === 'celebrate') m = html`<${Modal} title="解鎖新徽章！" onClose=${close}>
+      if (modal.kind === 'celebrate') m = html`<${Modal} title=${T.celebrateTitle} onClose=${close}>
           <div className="celebrate"><div className="badge-big"><${Medal} ch=${modal.ch} on=${true} size=${160} /></div>
-          <p>你完成了「${modal.ch.title}」的所有小節，在這座島插上旗子了！</p></div>
+          <p>${T.celebrate(modal.ch.title)}</p></div>
           <div className="row"><button className="btn btn-soft" onClick=${close}>繼續</button><button className="btn btn-primary" onClick=${() => setModal({ kind: 'chcert', ch: modal.ch })}>領取認證書</button></div><//>`;
-      if (modal.kind === 'chcert') m = html`<${CertModal} title=${modal.ch.title + ' 探險認證書'} filename=${`${who(prog)}_${modal.ch.title}_認證書.png`} onClose=${close}><${ChapterCert} ch=${modal.ch} prog=${prog} world=${world} /><//>`;
-      if (modal.kind === 'mission') m = html`<${CertModal} title="總任務報告" filename=${`${who(prog)}_${world.title}_總任務報告.png`} onClose=${close}><${MissionCert} world=${world} prog=${prog} /><//>`;
+      if (modal.kind === 'chcert') m = html`<${CertModal} title=${modal.ch.title + ' ' + T.certName} filename=${`${who(prog)}_${modal.ch.title}_${T.certName}.png`} onClose=${close}><${ChapterCert} ch=${modal.ch} prog=${prog} world=${world} /><//>`;
+      if (modal.kind === 'mission') m = html`<${CertModal} title=${T.mission} filename=${`${who(prog)}_${world.title}_${T.mission}.png`} onClose=${close}><${MissionCert} world=${world} prog=${prog} /><//>`;
     }
 
     return html`<div className="qw-app">
@@ -1017,6 +1100,9 @@
     const cur = QW.curriculum;
     if (!cur) { root.render(html`<div className="boot"><div className="boot-err">找不到 data/curriculum.js，請確認檔案位置。</div></div>`); return; }
     Store.key = cur.storageKey || 'quizworld';
+    const theme = THEMES[cur.theme] ? cur.theme : 'island';
+    T = THEMES[theme];
+    document.documentElement.classList.add('theme-' + theme);
     const files = cur.books.flatMap((b) => b.chapters).filter((c) => c.data).map((c) => c.data);
     const failed = (await Promise.all(files.map(loadScript))).filter(Boolean);
     const world = buildWorld(cur);
