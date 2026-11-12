@@ -32,7 +32,7 @@ QuizWorld.defineCurriculum({
           sections: ['第1節 物質的分離方法'] },
         { id: 'pc3', no: '3', title: '聲波城', icon: '🔊', color: '#d1495b', data: null,
           sections: ['3·1 波的傳播', '3·2 聲音的產生與傳播', '3·3 聲波的反射與超聲波', '3·4 響度、音調與音色'] },
-        { id: 'pc4', no: '4', title: '光之城', icon: '💡', color: '#e0a526', data: null,
+        { id: 'pc4', no: '4', title: '光之城', icon: '💡', color: '#e0a526', data: 'data/pc4.js',
           sections: ['4·1 光的直進與光速', '4·2 光的反射與面鏡', '4·3 光的折射與透鏡', '4·4 光學儀器', '4·5 光與顏色'] },
         { id: 'pc5', no: '5', title: '熱能城', icon: '🔥', color: '#e07a3f', data: null,
           sections: ['5·1 溫度與溫度計', '5·2 熱量與比熱', '5·3 熱對物質的影響', '5·4 熱的傳播方式'] },
