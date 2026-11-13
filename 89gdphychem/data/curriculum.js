@@ -52,7 +52,7 @@ QuizWorld.defineCurriculum({
           sections: ['第1節 低碳生活', '第2節 減塑行動'] },
         { id: 'pc12', no: '12', title: '力與壓力城', icon: '🎈', color: '#d1495b', data: null,
           sections: ['12·1 力與力的平衡', '12·2 摩擦力', '12·3 壓力', '12·4 浮力'] },
-        { id: 'pc13', no: '13', title: '運動城', icon: '🚄', color: '#3a86b4', data: null,
+        { id: 'pc13', no: '13', title: '運動城', icon: '🚄', color: '#3a86b4', data: 'data/pc13.js',
           sections: ['13·1 時間的測量', '13·2 位移與路徑長', '13·3 速率與速度', '13·4 加速度運動'] },
         { id: 'pc14', no: '14', title: '牛頓城', icon: '🍎', color: '#c0392b', data: 'data/pc14.js',
           sections: ['14·1 慣性定律', '14·2 運動定律', '14·3 作用力與反作用力', '14·4 圓周運動與萬有引力'] },
