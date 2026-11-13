@@ -56,7 +56,7 @@ QuizWorld.defineCurriculum({
           sections: ['13·1 時間的測量', '13·2 位移與路徑長', '13·3 速率與速度', '13·4 加速度運動'] },
         { id: 'pc14', no: '14', title: '牛頓城', icon: '🍎', color: '#c0392b', data: 'data/pc14.js',
           sections: ['14·1 慣性定律', '14·2 運動定律', '14·3 作用力與反作用力', '14·4 圓周運動與萬有引力'] },
-        { id: 'pc15', no: '15', title: '功與能城', icon: '🏗️', color: '#e07a3f', data: null,
+        { id: 'pc15', no: '15', title: '功與能城', icon: '🏗️', color: '#e07a3f', data: 'data/pc15.js',
           sections: ['15·1 功與功率', '15·2 動能、位能與能量守恆', '15·3 槓桿原理與靜力平衡', '15·4 簡單機械'] },
         { id: 'pc16', no: '16', title: '電路城', icon: '⚡', color: '#e0a526', data: null,
           sections: ['16·1 靜電現象', '16·2 電流', '16·3 電壓', '16·4 電阻與歐姆定律'] },
