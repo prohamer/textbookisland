@@ -26,7 +26,7 @@ QuizWorld.defineCurriculum({
           sections: ['第1節 實驗室安全守則', '第2節 科學方法', '第3節 科學技能'] },
         { id: 'pc1', no: '1', title: '測量城', icon: '📏', color: '#3a86b4', data: 'data/pc1.js',
           sections: ['1·1 長度與體積的測量', '1·2 質量與密度'] },
-        { id: 'pc2', no: '2', title: '物質城', icon: '🧪', color: '#2f9c95', data: null,
+        { id: 'pc2', no: '2', title: '物質城', icon: '🧪', color: '#2f9c95', data: 'data/pc2.js',
           sections: ['2·1 物質的性質與分類', '2·2 水溶液與濃度', '2·3 空氣的成分'] },
         { id: 'pcx1', no: '跨科', title: '分離術要塞', icon: '🔍', color: '#8a7bc4', data: null,
           sections: ['第1節 物質的分離方法'] },
