@@ -36,7 +36,7 @@ QuizWorld.defineCurriculum({
           sections: ['4·1 光的直進與光速', '4·2 光的反射與面鏡', '4·3 光的折射與透鏡', '4·4 光學儀器', '4·5 光與顏色'] },
         { id: 'pc5', no: '5', title: '熱能城', icon: '🔥', color: '#e07a3f', data: 'data/pc5.js',
           sections: ['5·1 溫度與溫度計', '5·2 熱量與比熱', '5·3 熱對物質的影響', '5·4 熱的傳播方式'] },
-        { id: 'pc6', no: '6', title: '原子城', icon: '⚛️', color: '#4c6fb5', data: null,
+        { id: 'pc6', no: '6', title: '原子城', icon: '⚛️', color: '#4c6fb5', data: 'data/pc6.js',
           sections: ['6·1 元素的探索', '6·2 元素週期表', '6·3 原子與化合物', '6·4 分子與化學式'] },
         { id: 'pc7', no: '7', title: '化學反應城', icon: '⚖️', color: '#5f9e4a', data: null,
           sections: ['7·1 質量守恆', '7·2 原子量、莫耳與化學反應式'] },
