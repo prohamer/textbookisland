@@ -48,7 +48,7 @@ QuizWorld.defineCurriculum({
           sections: ['10·1 影響反應速率的因素', '10·2 可逆反應與化學平衡'] },
         { id: 'pc11', no: '11', title: '有機城', icon: '🧴', color: '#8a7bc4', data: 'data/pc11.js',
           sections: ['11·1 認識有機化合物', '11·2 常見的有機化合物', '11·3 肥皂與清潔劑', '11·4 生活中的聚合物'] },
-        { id: 'pcx2', no: '跨科', title: '減塑守護要塞', icon: '♻️', color: '#4f9a5f', data: null,
+        { id: 'pcx2', no: '跨科', title: '減塑守護要塞', icon: '♻️', color: '#4f9a5f', data: 'data/pcx2.js',
           sections: ['第1節 低碳生活', '第2節 減塑行動'] },
         { id: 'pc12', no: '12', title: '力與壓力城', icon: '🎈', color: '#d1495b', data: 'data/pc12.js',
           sections: ['12·1 力與力的平衡', '12·2 摩擦力', '12·3 壓力', '12·4 浮力'] },
@@ -60,9 +60,9 @@ QuizWorld.defineCurriculum({
           sections: ['15·1 功與功率', '15·2 動能、位能與能量守恆', '15·3 槓桿原理與靜力平衡', '15·4 簡單機械'] },
         { id: 'pc16', no: '16', title: '電路城', icon: '⚡', color: '#e0a526', data: 'data/pc16.js',
           sections: ['16·1 靜電現象', '16·2 電流', '16·3 電壓', '16·4 電阻與歐姆定律'] },
-        { id: 'pc17', no: '17', title: '電能城', icon: '🔋', color: '#5f9e4a', data: null,
+        { id: 'pc17', no: '17', title: '電能城', icon: '🔋', color: '#5f9e4a', data: 'data/pc17.js',
           sections: ['17·1 電流的熱效應與電功率', '17·2 家庭用電與安全', '17·3 電池', '17·4 電解與電鍍'] },
-        { id: 'pc18', no: '18', title: '電磁城', icon: '🧲', color: '#4c6fb5', data: null,
+        { id: 'pc18', no: '18', title: '電磁城', icon: '🧲', color: '#4c6fb5', data: 'data/pc18.js',
           sections: ['18·1 磁鐵與磁場', '18·2 電流的磁效應', '18·3 電動機原理', '18·4 電磁感應'] }
       ]
     }
